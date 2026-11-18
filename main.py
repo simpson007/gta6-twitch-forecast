@@ -97,7 +97,10 @@ def release_day_series(comp: dict) -> list:
 
 def log_ratio_curves(case: dict) -> list:
     """One log-ratio curve per comparable with a usable hour-1 print:
-    (log hour-1 print, [log(viewers_h / viewers_1) for h = 1..24])."""
+    (name, log hour-1 print, [log(viewers_h / viewers_1) for h = 1..24]).
+    The name rides along so neighbour ranking breaks distance ties on it
+    instead of on the case file's ordering, keeping the output identical
+    no matter how the comparables happen to be ordered."""
     curves = []
     for comp in case.get("comparables") or []:
         series = release_day_series(comp)
@@ -106,6 +109,7 @@ def log_ratio_curves(case: dict) -> list:
             continue
         base = math.log(max(first, 1))
         curves.append((
+            str(comp.get("name", "")),
             base,
             [None if v is None else math.log(max(v, 1)) - base for v in series],
         ))
@@ -134,10 +138,10 @@ def baseline_quantiles(p1: float, hour: int, levels: list) -> list:
 def hour_quantiles(p1: float, hour: int, curves: list, levels: list) -> list:
     """Five quantiles for one hour from the k nearest launches' log ratios."""
     target = math.log(p1)
-    ranked = sorted(curves, key=lambda c: (abs(c[0] - target),))
+    ranked = sorted(curves, key=lambda c: (abs(c[1] - target), c[0]))
     neighbours = ranked[:K_NEIGHBOURS]
     values = sorted(
-        c[1][hour - 1] for c in neighbours if c[1][hour - 1] is not None
+        c[2][hour - 1] for c in neighbours if c[2][hour - 1] is not None
     )
     if len(values) < 3:
         return baseline_quantiles(p1, hour, levels)
